@@ -1,28 +1,16 @@
 package org.usfirst.frc.team496.robot;
 
-<<<<<<< HEAD
 import org.opencv.core.Mat;
 import org.opencv.core.Point;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
-=======
-import org.opencv.core.Rect;
-import org.opencv.core.Scalar;
-import org.opencv.core.Point;
-import org.opencv.core.Mat;
-
->>>>>>> paul/master
 import org.opencv.imgproc.Imgproc;
 
 import com.kauailabs.navx.frc.AHRS;
 
 import edu.wpi.cscore.CvSink;
 import edu.wpi.cscore.CvSource;
-<<<<<<< HEAD
-import edu.wpi.cscore.HttpCamera;
-=======
 import edu.wpi.cscore.UsbCamera;
->>>>>>> paul/master
 import edu.wpi.first.wpilibj.CameraServer;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Encoder;
@@ -30,20 +18,13 @@ import edu.wpi.first.wpilibj.GenericHID.Hand;
 import edu.wpi.first.wpilibj.PIDController;
 import edu.wpi.first.wpilibj.PIDOutput;
 import edu.wpi.first.wpilibj.PowerDistributionPanel;
-<<<<<<< HEAD
-=======
 import edu.wpi.first.wpilibj.Relay;
->>>>>>> paul/master
 import edu.wpi.first.wpilibj.RobotDrive;
 import edu.wpi.first.wpilibj.RobotDrive.MotorType;
 import edu.wpi.first.wpilibj.SPI;
 import edu.wpi.first.wpilibj.SampleRobot;
-<<<<<<< HEAD
-import edu.wpi.first.wpilibj.Talon;
-=======
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.Victor;
->>>>>>> paul/master
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.livewindow.LiveWindow;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
@@ -53,13 +34,8 @@ import edu.wpi.first.wpilibj.vision.VisionThread;
 public class Robot extends SampleRobot implements PIDOutput {
 	RobotDrive myRobot = new RobotDrive(0, 1, 2, 3);
 
-<<<<<<< HEAD
-	Talon climbingMotor = new Talon(4);
-	// Joystick stick = new Joystick(0);
-=======
 	Victor climbingMotor = new Victor(4);
 
->>>>>>> paul/master
 	XboxController xbox = new XboxController(1);
 	XboxController opXbox = new XboxController(0);
 
@@ -71,17 +47,8 @@ public class Robot extends SampleRobot implements PIDOutput {
 	AHRS ahrs;
 	Encoder enc1, enc2, enc3, enc4;
 	PowerDistributionPanel pdp;
-<<<<<<< HEAD
 
-	private static final int IMG_WIDTH = 320;
-	private static final int IMG_HEIGHT = 240;
-
-	private VisionThread pegVisionThread;
-	private double centerX = 0.0;
-	private final Object imgLock = new Object();
-=======
 	Relay lightSwitch;
->>>>>>> paul/master
 
 	PIDController turnController;
 
@@ -144,18 +111,18 @@ public class Robot extends SampleRobot implements PIDOutput {
 		UsbCamera camera2 = CameraServer.getInstance().startAutomaticCapture(1);
 		camera.setResolution(480, 320);
 		camera.setExposureManual(20);
-		//camera.setFPS(20);
+		// camera.setFPS(20);
 		camera2.setResolution(480, 320);
-		//camera2.setFPS(10);
+		// camera2.setFPS(10);
 
 		CvSink cvSink = CameraServer.getInstance().getVideo(camera);
 		CvSource outputStream = CameraServer.getInstance().putVideo("Peg Vision", 480, 320);
 		Mat source = new Mat();
 		pegVisionThread = new VisionThread(camera, new PegPipeline(), pipeline -> {
-			
+
 			cvSink.grabFrame(source);
 			outputStream.putFrame(source);
-			
+
 			if (pipeline.filterContoursOutput().size() > 0) {
 				synchronized (imgLock) {
 					if (pipeline.filterContoursOutput().size() < 2) {
@@ -180,39 +147,8 @@ public class Robot extends SampleRobot implements PIDOutput {
 						distance = 0.68 * 480 / (2 * targetDistance * 1.804);/// Math.tan(61degrees)
 					}
 
-<<<<<<< HEAD
-		HttpCamera camera = CameraServer.getInstance().addAxisCamera("10.4.96.20");
-		camera.setResolution(IMG_WIDTH, IMG_HEIGHT);
-		
-		CvSink cvSink = CameraServer.getInstance().getVideo();
-		CvSource outputStream = CameraServer.getInstance().putVideo("Peg Vision", 320, 240);
-		Mat source = new Mat();
-		pegVisionThread = new VisionThread(camera, new PegPipeline(), pipeline -> {
-	
-			
-			cvSink.grabFrame(source);
-			
-			if (pipeline.filterContoursOutput().size() == 2) {
-				
-				Rect r = Imgproc.boundingRect(pipeline.filterContoursOutput().get(0));
-				Rect r1 = Imgproc.boundingRect(pipeline.filterContoursOutput().get(1));
-				Imgproc.rectangle(source, new Point(r.x, r.y), new Point(r.x +
-						  r.width, r.y + r.height), new Scalar(0, 0, 255),2);
-				Imgproc.rectangle(source, new Point(r1.x, r1.y), new Point(r1.x +
-						  r1.width, r1.y + r1.height), new Scalar(0, 0, 255),2);
-				
-				synchronized (imgLock) {
-					centerX = r.x + (r.width / 2);
-					
-					
 				}
-			}
-			SmartDashboard.putNumber("CenterX", centerX);
-			outputStream.putFrame(source);
-=======
-				}
-				
-				 
+
 				outputStream.putFrame(source);
 
 				/*
@@ -240,44 +176,11 @@ public class Robot extends SampleRobot implements PIDOutput {
 				}
 				outputStream.putFrame(source);
 			}
-			
->>>>>>> paul/master
 
 		});
 		pegVisionThread.setDaemon(true);
 		pegVisionThread.start();
 
-<<<<<<< HEAD
-		/*
-		 * pegVisionThread = new VisionThread(camera, new PegPipeline(),
-		 * pipeline -> {
-		 * 
-		 * 
-		 * if (!pipeline.filterContoursOutput().isEmpty()) {
-		 * 
-		 * synchronized (imgLock) { //centerX = r.x + (r.width / 2);
-		 * //SmartDashboard.putNumber("center x", centerX); CvSink cvSink =
-		 * CameraServer.getInstance().getVideo(); CvSource outputStream =
-		 * CameraServer.getInstance().putVideo("Peg Vision", 640, 480);
-		 * 
-		 * Mat source = new Mat(); //Mat output = new Mat();
-		 * 
-		 * while (!Thread.interrupted()) { cvSink.grabFrame(source); Rect r =
-		 * Imgproc.boundingRect(pipeline.filterContoursOutput().get(0)); Rect r1
-		 * = Imgproc.boundingRect(pipeline.filterContoursOutput().get(1));
-		 * Imgproc.rectangle(source, new Point(r.x, r.y), new Point(r.x +
-		 * r.width, r.y + r.height), new Scalar(0, 0, 255),2);
-		 * Imgproc.rectangle(source, new Point(r1.x, r1.y), new Point(r1.x +
-		 * r1.width, r1.y + r1.height), new Scalar(0, 0, 255),2);
-		 * //Imgproc.cvtColor(source, output, Imgproc.COLOR_BGR2GRAY);
-		 * outputStream.putFrame(source); // Can do target math here
-		 * 
-		 * } } } });
-		 * 
-		 * pegVisionThread.setDaemon(true); pegVisionThread.start();
-		 */
-=======
->>>>>>> paul/master
 		LiveWindow.addActuator("DriveSystem", "RotateController", turnController);
 		LiveWindow.addSensor("PowerSystem", "Current", pdp);
 
@@ -312,9 +215,7 @@ public class Robot extends SampleRobot implements PIDOutput {
 		turnController.setSetpoint(0.0f);
 		int selection = DRIVE_FORWARD;
 		while (isAutonomous() && isEnabled()) {
-<<<<<<< HEAD
 
-=======
 			String autoMode = chooser.getSelected();
 			switch (autoMode) {
 			case rightStation:
@@ -411,7 +312,7 @@ public class Robot extends SampleRobot implements PIDOutput {
 				myRobot.mecanumDrive_Cartesian(0, 0.0, 0, ahrs.getAngle());
 				break;
 			}
->>>>>>> paul/master
+
 		}
 
 	}
