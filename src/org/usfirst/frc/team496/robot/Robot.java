@@ -1,16 +1,28 @@
 package org.usfirst.frc.team496.robot;
 
+<<<<<<< HEAD
 import org.opencv.core.Mat;
 import org.opencv.core.Point;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
+=======
+import org.opencv.core.Rect;
+import org.opencv.core.Scalar;
+import org.opencv.core.Point;
+import org.opencv.core.Mat;
+
+>>>>>>> paul/master
 import org.opencv.imgproc.Imgproc;
 
 import com.kauailabs.navx.frc.AHRS;
 
 import edu.wpi.cscore.CvSink;
 import edu.wpi.cscore.CvSource;
+<<<<<<< HEAD
 import edu.wpi.cscore.HttpCamera;
+=======
+import edu.wpi.cscore.UsbCamera;
+>>>>>>> paul/master
 import edu.wpi.first.wpilibj.CameraServer;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Encoder;
@@ -18,11 +30,20 @@ import edu.wpi.first.wpilibj.GenericHID.Hand;
 import edu.wpi.first.wpilibj.PIDController;
 import edu.wpi.first.wpilibj.PIDOutput;
 import edu.wpi.first.wpilibj.PowerDistributionPanel;
+<<<<<<< HEAD
+=======
+import edu.wpi.first.wpilibj.Relay;
+>>>>>>> paul/master
 import edu.wpi.first.wpilibj.RobotDrive;
 import edu.wpi.first.wpilibj.RobotDrive.MotorType;
 import edu.wpi.first.wpilibj.SPI;
 import edu.wpi.first.wpilibj.SampleRobot;
+<<<<<<< HEAD
 import edu.wpi.first.wpilibj.Talon;
+=======
+import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.Victor;
+>>>>>>> paul/master
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.livewindow.LiveWindow;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
@@ -32,15 +53,25 @@ import edu.wpi.first.wpilibj.vision.VisionThread;
 public class Robot extends SampleRobot implements PIDOutput {
 	RobotDrive myRobot = new RobotDrive(0, 1, 2, 3);
 
+<<<<<<< HEAD
 	Talon climbingMotor = new Talon(4);
 	// Joystick stick = new Joystick(0);
+=======
+	Victor climbingMotor = new Victor(4);
+
+>>>>>>> paul/master
 	XboxController xbox = new XboxController(1);
+	XboxController opXbox = new XboxController(0);
+
 	final String defaultAuto = "Default";
-	final String customAuto = "My Auto";
+	final String leftStation = "leftStation";
+	final String centerStation = "centerStation";
+	final String rightStation = "rightStation";
 	SendableChooser<String> chooser = new SendableChooser<>();
 	AHRS ahrs;
-	Encoder enc;
+	Encoder enc1, enc2, enc3, enc4;
 	PowerDistributionPanel pdp;
+<<<<<<< HEAD
 
 	private static final int IMG_WIDTH = 320;
 	private static final int IMG_HEIGHT = 240;
@@ -48,14 +79,31 @@ public class Robot extends SampleRobot implements PIDOutput {
 	private VisionThread pegVisionThread;
 	private double centerX = 0.0;
 	private final Object imgLock = new Object();
+=======
+	Relay lightSwitch;
+>>>>>>> paul/master
 
 	PIDController turnController;
-	double rotateToAngleRate;
 
-	static final double kP = 0.03;
+	double rotateToAngleRate;
+	boolean changed;
+	static final double kP = 0.04;
 	static final double kI = 0.00;
 	static final double kD = 0.00;
 	static final double kF = 0.00;
+
+	static double timeStart = Timer.getFPGATimestamp();
+	static double lastModeSwitchTime = timeStart;
+	static int xMultiplier = -1;
+	static int yMultiplier = 1;
+
+	private VisionThread pegVisionThread;
+	private double centerX = 0.0;
+	private final Object imgLock = new Object();
+	private boolean hasTarget;
+	private double prevTurn;
+	private double targetDistance;
+	private double distance;
 
 	/* This tuning parameter indicates how close to "on target" the */
 	/* PID Controller will attempt to get. */
@@ -70,7 +118,15 @@ public class Robot extends SampleRobot implements PIDOutput {
 			DriverStation.reportError("Error instantiating navX-MXP:  " + ex.getMessage(), true);
 		}
 		pdp = new PowerDistributionPanel();
-		enc = new Encoder(0, 1, false, Encoder.EncodingType.k4X);
+		enc1 = new Encoder(0, 1, false, Encoder.EncodingType.k4X);
+		enc2 = new Encoder(2, 3, false, Encoder.EncodingType.k4X);
+		enc3 = new Encoder(4, 5, false, Encoder.EncodingType.k4X);
+		enc4 = new Encoder(6, 7, false, Encoder.EncodingType.k4X);
+		double wheel = 6.0;
+		double wheel1Ticks = 1082; // our measure was 328
+		double circumfrence = Math.PI * wheel;
+		double ticks = circumfrence / wheel1Ticks;
+		enc1.setDistancePerPulse(ticks);
 		myRobot.setExpiration(0.1);
 		myRobot.setInvertedMotor(MotorType.kFrontLeft, true);
 		myRobot.setInvertedMotor(MotorType.kRearLeft, true);
@@ -80,7 +136,51 @@ public class Robot extends SampleRobot implements PIDOutput {
 		turnController.setOutputRange(-1.0, 1.0);
 		turnController.setAbsoluteTolerance(kToleranceDegrees);
 		turnController.setContinuous(true);
+		lightSwitch = new Relay(1);
 
+		// lightSwitch.set(Relay.Value.kReverse);
+		LiveWindow.addActuator("light", "switch", lightSwitch);
+		UsbCamera camera = CameraServer.getInstance().startAutomaticCapture(0);
+		UsbCamera camera2 = CameraServer.getInstance().startAutomaticCapture(1);
+		camera.setResolution(480, 320);
+		camera.setExposureManual(20);
+		//camera.setFPS(20);
+		camera2.setResolution(480, 320);
+		//camera2.setFPS(10);
+
+		CvSink cvSink = CameraServer.getInstance().getVideo(camera);
+		CvSource outputStream = CameraServer.getInstance().putVideo("Peg Vision", 480, 320);
+		Mat source = new Mat();
+		pegVisionThread = new VisionThread(camera, new PegPipeline(), pipeline -> {
+			
+			cvSink.grabFrame(source);
+			outputStream.putFrame(source);
+			
+			if (pipeline.filterContoursOutput().size() > 0) {
+				synchronized (imgLock) {
+					if (pipeline.filterContoursOutput().size() < 2) {
+						Rect r = Imgproc.boundingRect(pipeline.filterContoursOutput().get(0));
+						Imgproc.rectangle(source, new Point(r.x, r.y), new Point(r.x + r.width, r.y + r.height),
+								new Scalar(0, 0, 255), 2);
+						centerX = (r.x + r.width) / 2;
+						distance = 0.167 * 480 / (2 * centerX * 1.804);/// Math.tan(61degrees)
+
+					} else {
+						Rect r = Imgproc.boundingRect(pipeline.filterContoursOutput().get(0));
+						Imgproc.rectangle(source, new Point(r.x, r.y), new Point(r.x + r.width, r.y + r.height),
+								new Scalar(0, 0, 255), 2);
+						Rect r1 = Imgproc.boundingRect(pipeline.filterContoursOutput().get(1));
+
+						Imgproc.rectangle(source, new Point(r1.x, r1.y), new Point(r1.x + r1.width, r1.y + r1.height),
+								new Scalar(0, 0, 255), 2);
+						// CHANGE THIS
+						centerX = (r.x + (r1.x + r1.width)) / 2;
+						// ABOVE THIS
+						targetDistance = r1.x - r.x;
+						distance = 0.68 * 480 / (2 * targetDistance * 1.804);/// Math.tan(61degrees)
+					}
+
+<<<<<<< HEAD
 		HttpCamera camera = CameraServer.getInstance().addAxisCamera("10.4.96.20");
 		camera.setResolution(IMG_WIDTH, IMG_HEIGHT);
 		
@@ -109,11 +209,45 @@ public class Robot extends SampleRobot implements PIDOutput {
 			}
 			SmartDashboard.putNumber("CenterX", centerX);
 			outputStream.putFrame(source);
+=======
+				}
+				
+				 
+				outputStream.putFrame(source);
+
+				/*
+				 * 
+				 * if(r1.area()>180){ targetDistance = r1.x - r.x; distance =
+				 * 0.68 * IMG_WIDTH / (2 * targetDistance *
+				 * .765);//Math.tan(37.4)); } else{ targetDistance = r1.x - r.x;
+				 * distance = 90.0; }
+				 */
+				// targetDistance = r1.x - r.x;
+				// distance = 0.68 * IMG_WIDTH / (2 * targetDistance *
+				// .765);//Math.tan(37.4));
+
+				// distance = 3;
+				hasTarget = true;
+				// SmartDashboard.putNumber("Area", r1.area());
+				SmartDashboard.putNumber("CenterX", centerX);
+				SmartDashboard.putNumber("Distance", distance);
+				// System.out.println(centerX);
+
+			} else {
+				synchronized (imgLock) {
+					hasTarget = false;
+
+				}
+				outputStream.putFrame(source);
+			}
+			
+>>>>>>> paul/master
 
 		});
 		pegVisionThread.setDaemon(true);
 		pegVisionThread.start();
 
+<<<<<<< HEAD
 		/*
 		 * pegVisionThread = new VisionThread(camera, new PegPipeline(),
 		 * pipeline -> {
@@ -142,6 +276,8 @@ public class Robot extends SampleRobot implements PIDOutput {
 		 * 
 		 * pegVisionThread.setDaemon(true); pegVisionThread.start();
 		 */
+=======
+>>>>>>> paul/master
 		LiveWindow.addActuator("DriveSystem", "RotateController", turnController);
 		LiveWindow.addSensor("PowerSystem", "Current", pdp);
 
@@ -151,48 +287,162 @@ public class Robot extends SampleRobot implements PIDOutput {
 
 	@Override
 	public void robotInit() {
+		lightSwitch.set(Relay.Value.kForward);
 		chooser.addDefault("Default Auto", defaultAuto);
-		chooser.addObject("My Auto", customAuto);
+		chooser.addObject("Left Station", leftStation);
+		chooser.addObject("Center Station", centerStation);
+		chooser.addObject("Right Staion", rightStation);
 		SmartDashboard.putData("Auto modes", chooser);
 	}
 
 	@Override
 	public void autonomous() {
-		enc.reset();
-		myRobot.setSafetyEnabled(false);
-		while (isAutonomous() && isEnabled()) {
+		enc1.reset();
+		enc2.reset();
+		enc3.reset();
+		enc4.reset();
 
+		myRobot.setSafetyEnabled(false);
+
+		final int DRIVE_FORWARD = 1;
+		final int ROTATE_TO_TARGET = 2;
+		final int DRIVE_TO_TARGET = 3;
+		final int END = 4;
+		ahrs.reset();
+		turnController.setSetpoint(0.0f);
+		int selection = DRIVE_FORWARD;
+		while (isAutonomous() && isEnabled()) {
+<<<<<<< HEAD
+
+=======
+			String autoMode = chooser.getSelected();
+			switch (autoMode) {
+			case rightStation:
+				switch (selection) {
+				case DRIVE_FORWARD:
+					double distance = Math.abs(enc1.getDistance());
+					turnController.enable();
+					if (distance < 93) {
+						double currentRotationRate = rotateToAngleRate;
+						myRobot.mecanumDrive_Cartesian(0, -0.6, currentRotationRate, ahrs.getAngle());
+					} else {
+						ahrs.reset();
+
+						selection = ROTATE_TO_TARGET;
+					}
+					break;
+
+				case ROTATE_TO_TARGET:
+					System.out.println(ahrs.getAngle());
+
+					if (ahrs.getAngle() < 45) {
+						myRobot.mecanumDrive_Cartesian(0, 0.0, 0.4, ahrs.getAngle());
+					} else {
+						turnController.setSetpoint(0.0f);
+						ahrs.reset();
+						enc1.reset();
+						selection = DRIVE_TO_TARGET;
+					}
+					break;
+				case DRIVE_TO_TARGET:
+					distance = Math.abs(enc1.getDistance());
+					turnController.enable();
+					if (distance < 12) {
+						double currentRotationRate = rotateToAngleRate;
+						myRobot.mecanumDrive_Cartesian(0, -0.6, currentRotationRate, ahrs.getAngle());
+					} else {
+						ahrs.reset();
+
+						selection = END;
+					}
+					break;
+				case END:
+					myRobot.mecanumDrive_Cartesian(0, 0.0, 0, ahrs.getAngle());
+					break;
+				}
+				break;
+			case centerStation:
+				break;
+			case leftStation:
+				switch (selection) {
+				case DRIVE_FORWARD:
+					double distance = Math.abs(enc1.getDistance());
+					turnController.enable();
+					if (distance < 93) {
+						double currentRotationRate = rotateToAngleRate;
+						myRobot.mecanumDrive_Cartesian(0, -0.6, currentRotationRate, ahrs.getAngle());
+					} else {
+						ahrs.reset();
+
+						selection = ROTATE_TO_TARGET;
+					}
+					break;
+
+				case ROTATE_TO_TARGET:
+					System.out.println(ahrs.getAngle());
+
+					if (ahrs.getAngle() < -45) {
+						myRobot.mecanumDrive_Cartesian(0, 0.0, -0.4, ahrs.getAngle());
+					} else {
+						turnController.setSetpoint(0.0f);
+						ahrs.reset();
+						enc1.reset();
+						selection = DRIVE_TO_TARGET;
+					}
+					break;
+				case DRIVE_TO_TARGET:
+					distance = Math.abs(enc1.getDistance());
+					turnController.enable();
+					if (distance < 12) {
+						double currentRotationRate = rotateToAngleRate;
+						myRobot.mecanumDrive_Cartesian(0, -0.6, currentRotationRate, ahrs.getAngle());
+					} else {
+						ahrs.reset();
+
+						selection = END;
+					}
+					break;
+				case END:
+					myRobot.mecanumDrive_Cartesian(0, 0.0, 0, ahrs.getAngle());
+					break;
+				}
+				break;
+			default:
+				myRobot.mecanumDrive_Cartesian(0, 0.0, 0, ahrs.getAngle());
+				break;
+			}
+>>>>>>> paul/master
 		}
+
 	}
 
 	@Override
 	public void operatorControl() {
+		boolean lightOn = false;
 		myRobot.setSafetyEnabled(true);
 		while (isOperatorControl() && isEnabled()) {
 
+			if (opXbox.getAButton()) {
+				lightOn = true;
+			} else if (opXbox.getBButton()) {
+				lightOn = false;
+			}
+			if (lightOn) {
+				lightSwitch.set(Relay.Value.kForward);
+			} else {
+				lightSwitch.set(Relay.Value.kOff);
+			}
+
 			boolean rotateToAngle = false;
-			if (xbox.getStartButton() == true) {
+			if (xbox.getAButton() == true) {
 				ahrs.reset();
 			}
-
-			if (xbox.getTrigger(Hand.kRight)) {
+			if (opXbox.getRawButton(3)) {
 				climbingMotor.set(1.0);
-			} else if (xbox.getTrigger(Hand.kLeft)) {
+			} else if (opXbox.getRawButton(4)) {
 				climbingMotor.set(-1.0);
-			}
-
-			else if (xbox.getPOV() <= 315 && xbox.getPOV() >= 225) {
-				turnController.setSetpoint(0.0f);
-				rotateToAngle = true;
-			} else if (xbox.getPOV() <= 135 && xbox.getPOV() >= 45) {
-				turnController.setSetpoint(90.0f);
-				rotateToAngle = true;
-			} else if (xbox.getPOV() == 315 || xbox.getPOV() == 0 || xbox.getPOV() == 45) {
-				turnController.setSetpoint(179.9f);
-				rotateToAngle = true;
-			} else if (xbox.getPOV() <= 225 && xbox.getPOV() >= 135) {
-				turnController.setSetpoint(-90.0f);
-				rotateToAngle = true;
+			} else {
+				climbingMotor.set(0.0);
 			}
 
 			double currentRotationRate;
@@ -201,11 +451,56 @@ public class Robot extends SampleRobot implements PIDOutput {
 				currentRotationRate = rotateToAngleRate;
 			} else {
 				turnController.disable();
-				currentRotationRate = xbox.getX(Hand.kLeft);
+				currentRotationRate = (xbox.getX(Hand.kLeft));
 			}
 
-			myRobot.mecanumDrive_Cartesian(-xbox.getX(Hand.kRight), xbox.getY(Hand.kRight), currentRotationRate,
-					ahrs.getAngle());
+			if (currentRotationRate == 0 && changed) {
+				turnController.enable();
+				turnController.setSetpoint(ahrs.getAngle());
+				currentRotationRate = rotateToAngleRate;
+				changed = !changed;
+			} else {
+				changed = true;
+			}
+
+			/*
+			 * if(xbox.getX(Hand.kLeft)!=0){ changed = true;
+			 * turnController.disable();
+			 * turnController.setSetpoint(ahrs.getAngle()); currentRotationRate
+			 * = xbox.getX(Hand.kLeft); }else{ turnController.enable();
+			 * currentRotationRate = rotateToAngleRate; }
+			 */
+
+			/*
+			 * if (xbox.getPOV() == 0) { myRobot.mecanumDrive_Cartesian(0, -1,
+			 * currentRotationRate, 0); } else if (xbox.getPOV() == 45) {
+			 * myRobot.mecanumDrive_Cartesian(1, -1, currentRotationRate, 0); }
+			 * else if (xbox.getPOV() == 90) { myRobot.mecanumDrive_Cartesian(0,
+			 * 1, currentRotationRate, 0); } else if (xbox.getPOV() == 135) {
+			 * myRobot.mecanumDrive_Cartesian(-1, -1, currentRotationRate, 0); }
+			 * else if (xbox.getPOV() == 180) {
+			 * myRobot.mecanumDrive_Cartesian(0, 1, currentRotationRate, 0); }
+			 * else if (xbox.getPOV() == 225) {
+			 * myRobot.mecanumDrive_Cartesian(-1, 1, currentRotationRate, 0); }
+			 * else if (xbox.getPOV() == 270) {
+			 * myRobot.mecanumDrive_Cartesian(1, 0, currentRotationRate, 0); }
+			 * else if (xbox.getPOV() == 315) {
+			 * myRobot.mecanumDrive_Cartesian(1, 1, currentRotationRate, 0); }
+			 */
+
+			if (xbox.getRawButton(6) && (Timer.getFPGATimestamp() - lastModeSwitchTime) > .3) {
+				xMultiplier *= -1;
+				yMultiplier *= -1;
+				lastModeSwitchTime = Timer.getFPGATimestamp();
+			} else if (xbox.getRawButton(6)) {
+				lastModeSwitchTime = Timer.getFPGATimestamp();
+			}
+
+			if (xbox.getX(Hand.kRight) != 0 || xbox.getY(Hand.kRight) != 0 || xbox.getX(Hand.kLeft) != 0) {
+				myRobot.mecanumDrive_Cartesian(xMultiplier * xbox.getX(Hand.kRight),
+						yMultiplier * xbox.getY(Hand.kRight), currentRotationRate, 0);
+			}
+			Timer.delay(.00025);
 
 		}
 
@@ -213,8 +508,10 @@ public class Robot extends SampleRobot implements PIDOutput {
 
 	@Override
 	public void test() {
-		LiveWindow.run();
-		System.out.println("Current of 14: " + pdp.getCurrent(14));
+		while (isTest() && isEnabled()) {
+			LiveWindow.run();
+		}
+
 	}
 
 	@Override
