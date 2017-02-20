@@ -4,6 +4,7 @@ import org.opencv.core.Mat;
 import org.opencv.core.Point;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
+import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
 import com.kauailabs.navx.frc.AHRS;
@@ -105,24 +106,28 @@ public class Robot extends SampleRobot implements PIDOutput {
 		turnController.setContinuous(true);
 		lightSwitch = new Relay(1);
 
-		// lightSwitch.set(Relay.Value.kReverse);
-		LiveWindow.addActuator("light", "switch", lightSwitch);
-		UsbCamera camera = CameraServer.getInstance().startAutomaticCapture(0);
+
+		
+		//lift camera
 		UsbCamera camera2 = CameraServer.getInstance().startAutomaticCapture(1);
-		camera.setResolution(480, 320);
-		camera.setExposureManual(20);
-		// camera.setFPS(20);
-		camera2.setResolution(480, 320);
-		// camera2.setFPS(10);
-
-		CvSink cvSink = CameraServer.getInstance().getVideo(camera);
+		camera2.setResolution(160,120);
+	
+		//peg camera
+		UsbCamera camera = CameraServer.getInstance().startAutomaticCapture(0);
+		camera.setResolution(160, 120);
+		camera.setExposureAuto();
+		//camera.setExposureManual(5);
 		CvSource outputStream = CameraServer.getInstance().putVideo("Peg Vision", 480, 320);
+		CvSink cvSink = CameraServer.getInstance().getVideo(camera);
 		Mat source = new Mat();
+		
+		
+		
+		//Imgcodecs.imwrite("/home/lvuser/peg.jpg", source);
+	
+		
 		pegVisionThread = new VisionThread(camera, new PegPipeline(), pipeline -> {
-
 			cvSink.grabFrame(source);
-			outputStream.putFrame(source);
-
 			if (pipeline.filterContoursOutput().size() > 0) {
 				synchronized (imgLock) {
 					if (pipeline.filterContoursOutput().size() < 2) {
@@ -176,6 +181,8 @@ public class Robot extends SampleRobot implements PIDOutput {
 				}
 				outputStream.putFrame(source);
 			}
+			Timer.delay(1.0/20.0);
+			
 
 		});
 		pegVisionThread.setDaemon(true);
@@ -210,12 +217,16 @@ public class Robot extends SampleRobot implements PIDOutput {
 		final int DRIVE_FORWARD = 1;
 		final int ROTATE_TO_TARGET = 2;
 		final int DRIVE_TO_TARGET = 3;
-		final int END = 4;
+		final int BACKUP = 4;
+		final int TURN_TO_BASELINE = 5;
+		final int DRIVE_TO_BASELINE = 6;
+		final int END = 7;
 		ahrs.reset();
 		turnController.setSetpoint(0.0f);
 		int selection = DRIVE_FORWARD;
-		while (isAutonomous() && isEnabled()) {
 
+		while (isAutonomous() && isEnabled()) {
+			//System.out.println(selection);
 			String autoMode = chooser.getSelected();
 			switch (autoMode) {
 			case rightStation:
@@ -234,7 +245,7 @@ public class Robot extends SampleRobot implements PIDOutput {
 					break;
 
 				case ROTATE_TO_TARGET:
-					System.out.println(ahrs.getAngle());
+					//System.out.println(ahrs.getAngle());
 
 					if (ahrs.getAngle() < 45) {
 						myRobot.mecanumDrive_Cartesian(0, 0.0, 0.4, ahrs.getAngle());
@@ -247,8 +258,48 @@ public class Robot extends SampleRobot implements PIDOutput {
 					break;
 				case DRIVE_TO_TARGET:
 					distance = Math.abs(enc1.getDistance());
+					
 					turnController.enable();
-					if (distance < 12) {
+					if (distance < 24) {
+						double currentRotationRate = rotateToAngleRate;
+						myRobot.mecanumDrive_Cartesian(0, -0.6, currentRotationRate, ahrs.getAngle());
+					} else {
+						myRobot.mecanumDrive_Cartesian(0, 0, 0, ahrs.getAngle());
+
+						ahrs.reset();
+						Timer.delay(5);
+						enc1.reset();
+						selection = BACKUP;
+					}
+					break;
+				case BACKUP:
+					distance = Math.abs(enc1.getDistance());
+					if (distance < 24) {
+						double currentRotationRate = rotateToAngleRate;
+						myRobot.mecanumDrive_Cartesian(0, 0.6, currentRotationRate, ahrs.getAngle());
+					} else {
+						ahrs.reset();
+						enc1.reset();
+						selection = TURN_TO_BASELINE;
+					}
+					break;
+				case TURN_TO_BASELINE:
+					System.out.println("TURNNING TO BASELINE");
+					System.out.println(ahrs.getAngle());
+					if (ahrs.getAngle() < 135) {
+						myRobot.mecanumDrive_Cartesian(0, 0.0, 0.4, ahrs.getAngle());
+					} else {
+						turnController.setSetpoint(0.0f);
+						ahrs.reset();
+						enc1.reset();
+						selection = DRIVE_TO_BASELINE;
+					}
+					break;
+				case DRIVE_TO_BASELINE:
+					System.out.println("DRIVING TO BASELINE");
+					 distance = Math.abs(enc1.getDistance());
+					turnController.enable();
+					if (distance < 50) {
 						double currentRotationRate = rotateToAngleRate;
 						myRobot.mecanumDrive_Cartesian(0, -0.6, currentRotationRate, ahrs.getAngle());
 					} else {
@@ -258,7 +309,7 @@ public class Robot extends SampleRobot implements PIDOutput {
 					}
 					break;
 				case END:
-					myRobot.mecanumDrive_Cartesian(0, 0.0, 0, ahrs.getAngle());
+					myRobot.mecanumDrive_Cartesian(0, 0.6, 0, ahrs.getAngle());
 					break;
 				}
 				break;
@@ -310,9 +361,10 @@ public class Robot extends SampleRobot implements PIDOutput {
 				break;
 			default:
 				myRobot.mecanumDrive_Cartesian(0, 0.0, 0, ahrs.getAngle());
+
 				break;
 			}
-
+			Timer.delay(0.05);
 		}
 
 	}
@@ -401,7 +453,7 @@ public class Robot extends SampleRobot implements PIDOutput {
 				myRobot.mecanumDrive_Cartesian(xMultiplier * xbox.getX(Hand.kRight),
 						yMultiplier * xbox.getY(Hand.kRight), currentRotationRate, 0);
 			}
-			Timer.delay(.00025);
+			Timer.delay(.05);
 
 		}
 
