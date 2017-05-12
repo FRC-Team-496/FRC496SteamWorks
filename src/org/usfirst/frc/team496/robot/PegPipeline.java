@@ -41,6 +41,9 @@ public class PegPipeline implements VisionPipeline {
 	 * This is the primary method that runs the entire pipeline and updates the outputs.
 	 */
 	@Override	public void process(Mat source0) {
+		//Set up Region of interest
+		//Rect roi = new Rect(10, 10, 10, 10);
+		//source0 =  new Mat(source0, roi);
 		// Step Blur0:
 		Mat blurInput = source0;
 		BlurType blurType = BlurType.get("Box Blur");
@@ -49,9 +52,9 @@ public class PegPipeline implements VisionPipeline {
 
 		// Step HSL_Threshold0:
 		Mat hslThresholdInput = blurOutput;
-		double[] hslThresholdHue = {77.6978417266187, 92.12121212121212};
-		double[] hslThresholdSaturation = {171.98741007194246, 255.0};
-		double[] hslThresholdLuminance = {43.57014388489208, 255.0};
+		double[] hslThresholdHue = {67.98561151079136, 110.3030303030303};
+		double[] hslThresholdSaturation = {87.14028776978417, 255.0};
+		double[] hslThresholdLuminance = {43.57014388489208, 173.43434343434345};
 		hslThreshold(hslThresholdInput, hslThresholdHue, hslThresholdSaturation, hslThresholdLuminance, hslThresholdOutput);
 
 		// Step CV_erode0:
@@ -70,7 +73,7 @@ public class PegPipeline implements VisionPipeline {
 
 		// Step Filter_Contours0:
 		ArrayList<MatOfPoint> filterContoursContours = findContoursOutput;
-		double filterContoursMinArea = 200.0;
+		double filterContoursMinArea = 0.0;
 		double filterContoursMinPerimeter = 0.0;
 		double filterContoursMinWidth = 0.0;
 		double filterContoursMaxWidth = 1000.0;
@@ -79,8 +82,8 @@ public class PegPipeline implements VisionPipeline {
 		double[] filterContoursSolidity = {0, 100};
 		double filterContoursMaxVertices = 1000000.0;
 		double filterContoursMinVertices = 0.0;
-		double filterContoursMinRatio = 0.0;
-		double filterContoursMaxRatio = 1000.0;
+		double filterContoursMinRatio = 0.0;//(.5/5);// w/h nominal = 2/5
+		double filterContoursMaxRatio = 10000.0;//(3.5/5);
 		filterContours(filterContoursContours, filterContoursMinArea, filterContoursMinPerimeter, filterContoursMinWidth, filterContoursMaxWidth, filterContoursMinHeight, filterContoursMaxHeight, filterContoursSolidity, filterContoursMaxVertices, filterContoursMinVertices, filterContoursMinRatio, filterContoursMaxRatio, filterContoursOutput);
 
 	}
